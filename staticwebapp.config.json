@@ -1,7 +1,4 @@
 {
-  "globalHeaders": {
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://alcdn.msauth.net https://login.microsoftonline.com; connect-src 'self' https://login.microsoftonline.com https://graph.microsoft.com https://bookbrahma.sharepoint.com https://*.sharepoint.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://login.microsoftonline.com; img-src 'self' data:;"
-  },
   "navigationFallback": {
     "rewrite": "/index.html"
   }
