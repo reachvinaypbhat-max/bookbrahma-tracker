@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BookBrahma — Publish Tracker</title>
 <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+if (typeof msal === 'undefined') {
+  document.write('<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"><\/script>');
+}
+</script>
+<script>
+if (typeof msal === 'undefined') {
+  document.write('<script src="https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"><\/script>');
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ══════════════════════════════════════════════
@@ -652,7 +662,7 @@ code { background:var(--cream); border:1px solid var(--border); border-radius:4p
                   <h4>Set Redirect URI</h4>
                   <p>Platform: <code>Single-page application (SPA)</code><br>
                   URI: the full SharePoint URL of this HTML file<br>
-                  e.g. <code>https://yourorg.sharepoint.com/sites/YourSite/SiteAssets/BookBrahma_Tracker_App.html</code></p>
+                  e.g. <code>https://yourorg.sharepoint.com/sites/YourSite/index.html</code></p>
                 </div>
               </div>
               <div class="guide-step">
