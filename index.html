@@ -1072,25 +1072,28 @@ async function resolveSPIds() {
   if (SITE_ID && FILE_ID) return;
   setSyncState('syncing', 'Connecting…');
 
-  // Resolve site ID
-  const url = CFG.siteUrl.replace(/^https?:\/\//, '');
+  // Step 1: Resolve Site ID
+  const url      = CFG.siteUrl.replace(/^https?:\/\//, '');
   const slashIdx = url.indexOf('/');
-  const host = url.slice(0, slashIdx);
+  const host     = url.slice(0, slashIdx);
   const sitePath = url.slice(slashIdx);
-  const site = await graphFetch('GET', `/sites/${host}:${sitePath}`);
-  SITE_ID  = site.id;
+  const site     = await graphFetch('GET', `/sites/${host}:${sitePath}`);
+  SITE_ID = site.id;
 
-  // Drive ID for Site Assets — resolved once and hardcoded for fast startup
-  DRIVE_ID = 'blg7Ye6jjt9EuilKDu9l5_rfPdXiU2M4NFk51FsHmWBLoIv6J6NPl2QY3BEgGA7Z9C';
+  // Step 2: Search for the file by name — works regardless of which library it is in
+  const filename = 'BookBrahma_Tracker.xlsx';
+  const search   = await graphFetch('GET', `/sites/${SITE_ID}/drive/root/search(q='${filename}')`);
 
-  // Find the Excel file in the Site Assets drive
-  const fileName = CFG.filePath.replace(/^\//, '').split('/').pop(); // BookBrahma_Tracker.xlsx
-  const item = await graphFetch('GET', `/drives/${DRIVE_ID}/root:/${fileName}`);
-  FILE_ID = item.id;
+  if (!search.value || search.value.length === 0) {
+    throw new Error('BookBrahma_Tracker.xlsx not found. Please upload it to SharePoint Site Assets.');
+  }
+
+  // Pick the exact match
+  const match = search.value.find(f => f.name === filename) || search.value[0];
+  FILE_ID  = match.id;
+  DRIVE_ID = match.parentReference.driveId;
 }
 
-function xlBook()   { return `/drives/${DRIVE_ID}/items/${FILE_ID}/workbook`; }
-function xlSheet(s) { return `${xlBook()}/worksheets('${encodeURIComponent(s)}')`; }
 
 async function readSheet(sheetName) {
   const data = await graphFetch('GET', `${xlSheet(sheetName)}/usedRange`);
