@@ -1,7 +1,10 @@
 {
   "name": "bookbrahma-tracker",
   "version": "1.0.0",
+  "scripts": {
+    "build": "node build.js"
+  },
   "dependencies": {
-    "@azure/msal-browser": "2.38.3"
+    "@azure/msal-browser": "2.35.0"
   }
 }
