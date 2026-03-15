@@ -768,7 +768,9 @@ code { background:var(--cream); border:1px solid var(--border); border-radius:4p
         </div>
         <div class="fg">
           <label>Editor</label>
-          <input id="fa-editor" placeholder="Editor name…">
+          <select id="fa-editor">
+            <option value="">— Select editor —</option>
+          </select>
         </div>
         <div class="fg">
           <label>Cover Page Done?</label>
@@ -1288,6 +1290,19 @@ function savingBar(show, msg = 'Saving to SharePoint…') {
 //  POPULATE DROPDOWNS
 // ════════════════════════════════════════════════════════════════════
 function populateDropdowns() {
+  // Editor dropdown — populated from Users sheet
+  const editorSel = document.getElementById('fa-editor');
+  if (editorSel) {
+    const curEditor = editorSel.value;
+    editorSel.innerHTML = '<option value="">— Select editor —</option>' +
+      DB.users
+        .filter(u => u['Active?'] !== 'No')
+        .map(u => {
+          const name = u['Full Name'] || u['Name'] || '';
+          return `<option value="${name}" ${name === curEditor ? 'selected' : ''}>${name}</option>`;
+        }).join('');
+  }
+
   // Author selects
   ['f-author', 'fa-author', 'fb-author', 'd-reach-filter'].forEach(id => {
     const el = document.getElementById(id); if (!el) return;
