@@ -1072,76 +1072,21 @@ async function resolveSPIds() {
   if (SITE_ID && FILE_ID) return;
   setSyncState('syncing', 'Connecting…');
 
-  // Resolve site
+  // Resolve site ID
   const url = CFG.siteUrl.replace(/^https?:\/\//, '');
   const slashIdx = url.indexOf('/');
   const host = url.slice(0, slashIdx);
   const sitePath = url.slice(slashIdx);
   const site = await graphFetch('GET', `/sites/${host}:${sitePath}`);
-  SITE_ID = site.id;
-  console.log('Site ID:', SITE_ID);
+  SITE_ID  = site.id;
 
-  // Extract filename from config path
-  const filePath = CFG.filePath.replace(/^\//, '');           // SiteAssets/BookBrahma_Tracker.xlsx
-  const parts    = filePath.split('/');
-  const libName  = parts[0];   // SiteAssets
-  const fileName = parts.slice(1).join('/');  // BookBrahma_Tracker.xlsx
-  console.log('Library:', libName, '| File:', fileName);
+  // Drive ID for Site Assets — resolved once and hardcoded for fast startup
+  DRIVE_ID = 'blg7Ye6jjt9EuilKDu9l5_rfPdXiU2M4NFk51FsHmWBLoIv6J6NPl2QY3BEgGA7Z9C';
 
-  // Strategy 1: Access Site Assets via its SharePoint list/drive endpoint directly
-  // Site Assets has a known internal name 'SiteAssets'
-  try {
-    const listsResp = await graphFetch('GET', `/sites/${SITE_ID}/lists?$filter=name eq '${libName}'`);
-    console.log('Lists found:', JSON.stringify(listsResp.value?.map(l => l.name + '/' + l.id)));
-    if (listsResp.value && listsResp.value.length > 0) {
-      const listId = listsResp.value[0].id;
-      // Get drive for this specific list
-      const listDrive = await graphFetch('GET', `/sites/${SITE_ID}/lists/${listId}/drive`);
-      DRIVE_ID = listDrive.id;
-      console.log('Site Assets drive ID:', DRIVE_ID);
-      const item = await graphFetch('GET', `/drives/${DRIVE_ID}/root:/${fileName}`);
-      FILE_ID = item.id;
-      console.log('File found! ID:', FILE_ID);
-      return;
-    }
-  } catch(e) {
-    console.log('Strategy 1 failed:', e.message);
-  }
-
-  // Strategy 2: Try all drives including hidden ones
-  try {
-    const allDrives = await graphFetch('GET', `/sites/${SITE_ID}/drives`);
-    console.log('All drives:', allDrives.value.map(d => d.name).join(', '));
-    for (const drive of allDrives.value) {
-      try {
-        const item = await graphFetch('GET', `/drives/${drive.id}/root:/${fileName}`);
-        if (item?.id) {
-          DRIVE_ID = drive.id;
-          FILE_ID  = item.id;
-          console.log('Found in drive:', drive.name);
-          return;
-        }
-      } catch(e) { /* try next */ }
-    }
-  } catch(e) {
-    console.log('Strategy 2 failed:', e.message);
-  }
-
-  // Strategy 3: Search for the file by name across the site
-  try {
-    const search = await graphFetch('GET', `/sites/${SITE_ID}/drive/root/search(q='BookBrahma_Tracker.xlsx')`);
-    if (search.value && search.value.length > 0) {
-      const found = search.value[0];
-      FILE_ID  = found.id;
-      DRIVE_ID = found.parentReference?.driveId;
-      console.log('Found via search! Drive:', DRIVE_ID, 'File:', FILE_ID);
-      return;
-    }
-  } catch(e) {
-    console.log('Strategy 3 failed:', e.message);
-  }
-
-  throw new Error('Cannot find BookBrahma_Tracker.xlsx. Check the file is in Site Assets and the Graph API has Files.ReadWrite permission.');
+  // Find the Excel file in the Site Assets drive
+  const fileName = CFG.filePath.replace(/^\//, '').split('/').pop(); // BookBrahma_Tracker.xlsx
+  const item = await graphFetch('GET', `/drives/${DRIVE_ID}/root:/${fileName}`);
+  FILE_ID = item.id;
 }
 
 function xlBook()   { return `/drives/${DRIVE_ID}/items/${FILE_ID}/workbook`; }
