@@ -1075,12 +1075,16 @@ async function resolveSPIds() {
   const slashIdx = url.indexOf('/');
   const host = url.slice(0, slashIdx);
   const sitePath = url.slice(slashIdx);
+  console.log('Resolving site:', host, sitePath);
   const site  = await graphFetch('GET', `/sites/${host}:${sitePath}`);
+  console.log('Site ID:', site.id);
   SITE_ID  = site.id;
   const drive = await graphFetch('GET', `/sites/${SITE_ID}/drive`);
   DRIVE_ID = drive.id;
   const fp = CFG.filePath.replace(/^\//, '');
-  const item = await graphFetch('GET', `/drives/${DRIVE_ID}/root:/${fp}`);
+  console.log('Looking for file:', fp);
+  const item = await graphFetch('GET', `/sites/${SITE_ID}/drive/root:/${fp}`);
+  console.log('File ID:', item.id);
   FILE_ID = item.id;
 }
 
