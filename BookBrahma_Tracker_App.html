@@ -407,7 +407,7 @@ code { background:var(--cream); border:1px solid var(--border); border-radius:4p
 <div id="login-screen">
   <div class="login-card">
     <div class="login-brand">BookBrahma</div>
-    <div class="login-sub">Article Publish Tracker</div>
+    <div class="login-sub">Sign in with your Microsoft 365 account to continue</div>
 
     <button class="ms-btn" onclick="doLogin()">
       <svg class="ms-logo" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -421,31 +421,7 @@ code { background:var(--cream); border:1px solid var(--border); border-radius:4p
 
     <div class="login-err" id="login-err" style="display:none"></div>
 
-    <div class="login-divider"></div>
-    <span class="config-toggle" onclick="toggleConfig()">⚙️ Configure SharePoint connection</span>
-
-    <div class="config-box" id="config-box">
-      <div class="alert alert-info" style="margin-bottom:14px;font-size:.79rem">
-        Enter once — stored in your browser. See the <strong>Guide</strong> page for Azure setup instructions.
-      </div>
-      <div class="fg" style="margin-bottom:10px">
-        <label>Azure Application (Client) ID</label>
-        <input id="cfg-cid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-      </div>
-      <div class="fg" style="margin-bottom:10px">
-        <label>Azure Tenant (Directory) ID</label>
-        <input id="cfg-tid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-      </div>
-      <div class="fg" style="margin-bottom:10px">
-        <label>SharePoint Site URL</label>
-        <input id="cfg-site" placeholder="https://yourorg.sharepoint.com/sites/YourSite">
-      </div>
-      <div class="fg" style="margin-bottom:12px">
-        <label>Excel file path in SharePoint</label>
-        <input id="cfg-path" placeholder="/Shared Documents/BookBrahma_Tracker.xlsx">
-      </div>
-      <button class="btn btn-amber" style="width:100%;justify-content:center" onclick="saveConfig()">💾 Save Configuration</button>
-    </div>
+    
   </div>
 </div>
 
@@ -968,8 +944,15 @@ code { background:var(--cream); border:1px solid var(--border); border-radius:4p
 //  CONFIG — stored in localStorage
 // ════════════════════════════════════════════════════════════════════
 const CFG_KEY = 'bb_sp_cfg_v2';
-let CFG = {};
-try { CFG = JSON.parse(localStorage.getItem(CFG_KEY) || '{}'); } catch {}
+// Pre-configured — users only need to sign in with Microsoft 365
+let CFG = {
+  clientId: '2c09671e-aef9-4a14-842a-c38fc611e6ae',
+  tenantId: 'cd2b2d84-941d-4036-9a16-03c00e8ab50c',
+  siteUrl:  'https://bookbrahma.sharepoint.com/sites/BookbrahmaColumn',
+  filePath: '/SiteAssets/BookBrahma_Tracker.xlsx',
+};
+// Persist to localStorage so silent-token refresh works across page loads
+localStorage.setItem(CFG_KEY, JSON.stringify(CFG));
 
 function loadConfigIntoForm() {
   if (CFG.clientId)  document.getElementById('cfg-cid').value  = CFG.clientId;
@@ -991,10 +974,7 @@ function saveConfig() {
   toast('Configuration saved — now sign in.', 'ok');
 }
 
-function toggleConfig() {
-  const b = document.getElementById('config-box');
-  b.classList.toggle('open');
-}
+function toggleConfig() { /* config hardcoded */ }
 
 // ════════════════════════════════════════════════════════════════════
 //  MSAL / AUTH
@@ -1830,23 +1810,34 @@ function today() { return new Date().toISOString().split('T')[0]; }
 //  BOOT
 // ════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
-  loadConfigIntoForm();
-  if (CFG.clientId && CFG.tenantId) {
-    buildMsal();
-    try {
-      await msalApp.handleRedirectPromise();
-      const accounts = msalApp.getAllAccounts();
-      if (accounts.length) {
-        const acct = accounts[0];
+  // config is hardcoded - no form needed
+  // Config is hardcoded - always initialise MSAL on load
+  buildMsal();
+  try {
+    const redirectResult = await msalApp.handleRedirectPromise();
+    if (redirectResult) {
+      const acct = redirectResult.account || msalApp.getAllAccounts()[0];
+      if (acct) {
         document.getElementById('user-name').textContent = acct.name || acct.username;
         document.getElementById('user-avatar').textContent = (acct.name || acct.username || '?')[0].toUpperCase();
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
         await syncAll();
         renderDashboard();
+        return;
       }
-    } catch { /* show login */ }
-  }
+    }
+    const accounts = msalApp.getAllAccounts();
+    if (accounts.length) {
+      const acct = accounts[0];
+      document.getElementById('user-name').textContent = acct.name || acct.username;
+      document.getElementById('user-avatar').textContent = (acct.name || acct.username || '?')[0].toUpperCase();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      await syncAll();
+      renderDashboard();
+    }
+  } catch { /* show login button */ }
 });
 </script>
 </body>
