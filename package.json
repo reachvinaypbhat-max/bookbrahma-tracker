@@ -1,0 +1,7 @@
+{
+  "name": "bookbrahma-tracker",
+  "version": "1.0.0",
+  "dependencies": {
+    "@azure/msal-browser": "2.38.3"
+  }
+}
