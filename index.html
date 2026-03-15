@@ -1076,16 +1076,38 @@ async function resolveSPIds() {
   const host = url.slice(0, slashIdx);
   const sitePath = url.slice(slashIdx);
   console.log('Resolving site:', host, sitePath);
-  const site  = await graphFetch('GET', `/sites/${host}:${sitePath}`);
+  const site = await graphFetch('GET', `/sites/${host}:${sitePath}`);
   console.log('Site ID:', site.id);
-  SITE_ID  = site.id;
-  const drive = await graphFetch('GET', `/sites/${SITE_ID}/drive`);
-  DRIVE_ID = drive.id;
+  SITE_ID = site.id;
+
+  // Get all drives and find the one containing our file
   const fp = CFG.filePath.replace(/^\//, '');
   console.log('Looking for file:', fp);
-  const item = await graphFetch('GET', `/sites/${SITE_ID}/drive/root:/${fp}`);
-  console.log('File ID:', item.id);
-  FILE_ID = item.id;
+
+  // Try each drive until we find the file
+  const drivesResp = await graphFetch('GET', `/sites/${SITE_ID}/drives`);
+  console.log('Drives found:', drivesResp.value.map(d => d.name + ' (' + d.id + ')').join(', '));
+
+  let found = false;
+  for (const drive of drivesResp.value) {
+    try {
+      const item = await graphFetch('GET', `/drives/${drive.id}/root:/${fp}`);
+      if (item && item.id) {
+        DRIVE_ID = drive.id;
+        FILE_ID  = item.id;
+        console.log('Found file in drive:', drive.name, '| File ID:', FILE_ID);
+        found = true;
+        break;
+      }
+    } catch (e) {
+      console.log('Not in drive:', drive.name, '-', e.message);
+    }
+  }
+
+  if (!found) {
+    // Last resort: try by file name search
+    throw new Error('Could not find BookBrahma_Tracker.xlsx in any SharePoint drive. Make sure it is uploaded to Site Assets.');
+  }
 }
 
 function xlBook()   { return `/drives/${DRIVE_ID}/items/${FILE_ID}/workbook`; }
