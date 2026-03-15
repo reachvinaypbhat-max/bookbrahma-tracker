@@ -1162,6 +1162,25 @@ async function patchRange(sheetName, address, values) {
 }
 
 // Convert raw sheet values to objects (row[0]=title row, row[1]=header row, row[2+]=data)
+// Convert Excel date serial number → 'dd/MMM/yyyy' string
+// Excel epoch: 1 Jan 1900 = serial 1 (with Lotus 1-2-3 leap-year bug: day 60 = 29 Feb 1900 never existed)
+function excelDateToString(serial) {
+  if (!serial || isNaN(serial)) return serial;
+  const num = Number(serial);
+  if (num < 1 || num > 2958465) return serial; // outside valid date range → not a date
+  // Adjust for Excel's Lotus bug (serial 60 = phantom 29 Feb 1900)
+  const adjusted = num > 59 ? num - 1 : num;
+  const msFromEpoch = (adjusted - 1) * 86400000;
+  const date = new Date(Date.UTC(1900, 0, 1) + msFromEpoch);
+  const dd  = String(date.getUTCDate()).padStart(2, '0');
+  const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date.getUTCMonth()];
+  const yyyy = date.getUTCFullYear();
+  return `${dd}/${mon}/${yyyy}`;
+}
+
+// Date column header keywords — any header containing these words gets date conversion
+const DATE_HEADERS = ['date', 'Date'];
+
 function sheetToObjects(rows, headerRow = 1) {
   // headerRow: 0-based index of the row containing column names
   // ARTICLES has title(0) + groups(1) + headers(2) + data(3+) → headerRow=2
@@ -1172,7 +1191,15 @@ function sheetToObjects(rows, headerRow = 1) {
   return rows.slice(dataStart)
     .map((r, i) => {
       const obj = { _row: i + dataStart + 1 }; // 1-based Excel row number
-      headers.forEach((h, ci) => { if (h) obj[h] = r[ci] ?? ''; });
+      headers.forEach((h, ci) => {
+        if (!h) return;
+        let val = r[ci] ?? '';
+        // Convert Excel serial dates to dd/MMM/yyyy for date columns
+        if (DATE_HEADERS.some(kw => h.includes(kw)) && typeof val === 'number') {
+          val = excelDateToString(val);
+        }
+        obj[h] = val;
+      });
       return obj;
     })
     .filter(o => Object.values(o).some((v, i) => i > 0 && v !== '' && v !== null));
@@ -1520,9 +1547,9 @@ function openArticle(rowNum) {
   document.getElementById('fa-code').value      = art?.['Article Code'] || '(generated on save)';
   document.getElementById('fa-title').value     = art?.['Title'] || '';
   document.getElementById('fa-status').value    = art?.['Status'] || 'Pending';
-  document.getElementById('fa-received').value  = art?.['Date Received'] || today();
-  document.getElementById('fa-scheduled').value = art?.['Scheduled Date'] || '';
-  document.getElementById('fa-published').value = art?.['Published Date'] || '';
+  document.getElementById('fa-received').value  = displayDateToInput(art?.['Date Received']) || today();
+  document.getElementById('fa-scheduled').value = displayDateToInput(art?.['Scheduled Date'] || '');
+  document.getElementById('fa-published').value = displayDateToInput(art?.['Published Date'] || '');
   document.getElementById('fa-editor').value    = art?.['Editor'] || '';
   document.getElementById('fa-cover').value     = art?.['Cover Done?'] || 'No';
   document.getElementById('fa-sp').value        = art?.['SharePoint URL'] || '';
@@ -1870,6 +1897,20 @@ async function saveUser() {
     renderUsers();
     toast('✅ User saved', 'ok');
   } catch(e) { savingBar(false); toast(e.message, 'err'); }
+}
+
+// Convert 'dd/MMM/yyyy' display format back to 'yyyy-MM-dd' for HTML date inputs
+function displayDateToInput(s) {
+  if (!s || typeof s !== 'string') return '';
+  // If already in yyyy-MM-dd format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Parse dd/MMM/yyyy
+  const m = s.match(/^(\d{2})\/(\w{3})\/(\d{4})$/);
+  if (!m) return '';
+  const months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+                  Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  const mm = months[m[2]];
+  return mm ? `${m[3]}-${mm}-${m[1]}` : '';
 }
 
 // ════════════════════════════════════════════════════════════════════
